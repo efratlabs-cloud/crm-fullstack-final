@@ -13,10 +13,14 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
-const leadRoutes = require("./routes/leadRoutes");
-app.use("/api/leads", leadRoutes);
 const authRoutes = require("./routes/authRoutes");
+const leadRoutes = require("./routes/leadRoutes");
+const projectRoutes = require("./routes/projectRoutes");
+
+// הגדרת הנתיבים
 app.use("/api/auth", authRoutes);
+app.use("/api/leads", leadRoutes);
+app.use("/api/projects", projectRoutes);
 
 // נתיב בדיקה ראשוני
 app.get("/api/health", (req, res) => {
