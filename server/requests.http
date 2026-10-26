@@ -1,0 +1,70 @@
+@host = http://localhost:5000
+# אחרי שתעשו Login, תעתיקו את הטוקן שקיבלתן ותדביקו אותו כאן במקום הטקסט:
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhZGY4ZTBiNjg3MDFhYzE3OTZjYWVkNiIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzkzMDM1Nzg3LCJleHAiOjE3OTM2NDA1ODd9.Jd3PZw0TCDctVBnbqwacdaUFFRKe-z06258JGrXBwCs
+
+### 1. בדיקת שפיות לשרת (Health Check)
+GET {{host}}/api/health
+
+### ==========================================
+### 2. נתיבי משתמשים והתחברות (ירדן - Auth)
+### ==========================================
+
+### הרשמת משתמש חדש (Register)
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Chaya Ifrach2",
+  "email": "Chaya2@example.com",
+  "password": "12tt3456"
+}
+
+### התחברות וקבלת טוקן (Login)
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "chaya2@example.com",
+  "password": "12tt3456"
+}
+
+### ==========================================
+### 3. נתיבי לידים (חיה - Leads)
+### ==========================================
+
+### שליפת כל הלידים
+GET {{host}}/api/leads
+Authorization: Bearer {{token}}
+
+### יצירת ליד חדש
+POST {{host}}/api/leads
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "3ישראל ישראלי",
+  "email": "israel3@client.com",
+  "phone": "052-1234567",
+  "serviceType": "מערכת לעסק"
+}
+
+### ==========================================
+### 4. נתיבי פרויקטים (אפרת - Projects)
+### ==========================================
+
+### שליפת כל הפרויקטים
+GET {{host}}/api/projects
+Authorization: Bearer {{token}}
+
+### יצירת פרויקט חדש (חובה להדביק בשדה lead את ה-_id של ליד שיצרתן!)
+POST {{host}}/api/projects
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "בניית אתר חנות",
+  "description": "עיצוב ופיתוח אתר ב-React.js",
+  "lead": "6adf8f9068701ac1796caed8",
+  "status": "בביצוע",
+  "budget": 15000
+}
