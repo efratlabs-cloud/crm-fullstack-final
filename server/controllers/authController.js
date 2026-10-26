@@ -25,17 +25,27 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: "אנא מלא את כל השדות" });
     }
 
+    if (password.length < 6) {
+      return res
+        .status(400)
+        .json({ message: "הסיסמה חייבת להכיל לפחות 6 תווים" });
+    }
+
     const userExists = await User.findOne({ email });
     if (userExists) {
       return res.status(400).json({ message: "משתמש כבר קיים" });
     }
+
+    // הצפנת הסיסמה לפני שמירה במסד הנתונים
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
 
     const shouldBeAdmin = isAdminEmail(email);
 
     const user = await User.create({
       name,
       email,
-      password,
+      passwordHash,
       role: shouldBeAdmin ? "admin" : "user",
     });
 
@@ -68,7 +78,8 @@ const loginUser = async (req, res) => {
       return res.status(400).json({ message: "משתמש לא נמצא" });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    // השוואת הסיסמה מול passwordHash שבמסד הנתונים
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
       return res.status(400).json({ message: "סיסמה שגויה" });
     }
@@ -101,10 +112,13 @@ const googleLogin = async (req, res) => {
 
     let user = await User.findOne({ email });
     if (!user) {
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(googleId, salt);
+
       user = await User.create({
         name: email.split("@")[0],
         email,
-        password: googleId,
+        passwordHash,
         role: shouldBeAdmin ? "admin" : "user",
       });
     } else {
