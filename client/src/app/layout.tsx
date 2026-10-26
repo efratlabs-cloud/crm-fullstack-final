@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Rubik } from "next/font/google";
+import { AuthProvider } from "@/context/AuthContext";
 import "./globals.css";
 
 const rubik = Rubik({
@@ -23,8 +24,10 @@ export default function RootLayout({
       dir="rtl"
       className={`${rubik.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">{children}
-        
+      <body className="min-h-full flex flex-col font-sans">
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
