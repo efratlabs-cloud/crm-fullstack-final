@@ -13,6 +13,8 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
+const leadRoutes = require("./routes/leadRoutes");
+app.use("/api/leads", leadRoutes);
 const authRoutes = require("./routes/authRoutes");
 app.use("/api/auth", authRoutes);
 
