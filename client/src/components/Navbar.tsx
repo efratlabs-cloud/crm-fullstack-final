@@ -1,40 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
-
-interface User {
-  name: string;
-  email: string;
-  role: string;
-}
+import { usePathname } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Navbar() {
   const pathname = usePathname();
-  const router = useRouter();
-
-  // אתחול ה-State פעם אחת בצורה בטוחה בלי צורך ב-useEffect מיותר
-  const [user, setUser] = useState<User | null>(() => {
-    if (typeof window === 'undefined') return null;
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        return JSON.parse(storedUser);
-      } catch {
-        console.error('Failed to parse user from localStorage');
-        return null;
-      }
-    }
-    return null;
-  });
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
-    router.push('/login');
-  };
+  const { user, logout } = useAuth();
 
   const navLinks = [
     { name: 'דאשבורד', href: '/dashboard' },
@@ -59,10 +31,10 @@ export default function Navbar() {
           <div className="flex justify-between h-16 items-center">
             <span className="text-xl font-bold text-indigo-600">Studio CRM</span>
             <Link
-              href="/login"
+              href={pathname === '/login' ? '/register' : '/login'}
               className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
             >
-              התחברות
+              {pathname === '/login' ? 'הרשמה' : 'התחברות'}
             </Link>
           </div>
         </div>
@@ -102,10 +74,15 @@ export default function Navbar() {
             {user && (
               <span className="text-sm font-medium text-gray-700">
                 {getGreeting()}, {user.name}
+                {user.role === 'admin' && (
+                  <span className="mr-2 rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">
+                    Admin
+                  </span>
+                )}
               </span>
             )}
             <button
-              onClick={handleLogout}
+              onClick={logout}
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
             >
               התנתק

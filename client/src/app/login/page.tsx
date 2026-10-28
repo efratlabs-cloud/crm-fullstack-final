@@ -2,6 +2,7 @@
 
 import GoogleButton from "@/components/GoogleButton";
 import LoginForm from "@/components/LoginForm";
+import Link from "next/link";
 
 export default function LoginPage() {
   return (
@@ -65,14 +66,14 @@ export default function LoginPage() {
               <GoogleButton />
             </div>
 
-            <p className="mt-6 text-center text-sm text-slate-500">
+           <p className="mt-6 text-center text-sm text-slate-500">
               אין לך חשבון?{" "}
-              <a
-                href="#"
+              <Link
+                href="/register"
                 className="font-semibold text-blue-600 transition hover:text-blue-700"
               >
                 צור חשבון חדש
-              </a>
+              </Link>
             </p>
           </div>
         </section>
