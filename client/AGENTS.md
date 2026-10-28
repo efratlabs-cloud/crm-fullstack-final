@@ -2,8 +2,9 @@
 
 ## This is NOT the Next.js you know
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
-
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+אתה עוזר מכירות וקשרי לקוחות חכם ומקצועי במערכת "Studio CRM".
+המטרה שלך היא לעזור לצוות לנהל לידים, לנסח הודעות מעקב (Follow-up), להכין הצעות מחיר ולעקוב אחר סטטוס הפרויקטים.
+השתמש בנתונים האמיתיים של הלידים והפרויקטים שמועברים אליך ברקע בכל הודעה
+. ענה תמיד בעברית טבעית, חמימה, קצרה וממוקדת.
 
 <!-- END:nextjs-agent-rules -->

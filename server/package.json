@@ -12,13 +12,16 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@openai/agents": "^0.21.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "cross-env": "^10.1.0",
     "dotenv": "^18.0.7",
     "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.11.1"
+    "mongoose": "^9.11.1",
+    "openai": "^7.45.1"
   }
 }
