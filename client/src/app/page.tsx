@@ -1,11 +1,10 @@
 'use client';
 
-import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 
 export default function Home() {
   return (
-    <AppLayout>
+    <>
       <div className="py-6">
         {/* כותרת ראשית */}
         <div className="mb-8">
@@ -51,6 +50,6 @@ export default function Home() {
           </Link>
         </div>
       </div>
-    </AppLayout>
+    </>
   );
 }
