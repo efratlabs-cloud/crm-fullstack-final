@@ -1,8 +1,73 @@
 const { crmAssistantAgent, getUserMemorySession } = require("../lib/agents");
 const { run } = require("@openai/agents");
+const mongoose = require("mongoose");
 const Lead = require("../models/Lead");
 const Project = require("../models/Project");
 const User = require("../models/User");
+
+const generateFollowup = async (req, res) => {
+  try {
+    const { leadId, messageType, tone, customNotes = "" } = req.body || {};
+
+    if (!mongoose.isValidObjectId(leadId)) {
+      return res.status(400).json({ message: "מזהה הליד אינו תקין." });
+    }
+
+    if (!["whatsapp", "email", "quote"].includes(messageType)) {
+      return res.status(400).json({ message: "סוג ההודעה אינו תקין." });
+    }
+
+    if (!["friendly", "formal", "sales"].includes(tone)) {
+      return res.status(400).json({ message: "סגנון הכתיבה אינו תקין." });
+    }
+
+    if (typeof customNotes !== "string" || customNotes.length > 500) {
+      return res
+        .status(400)
+        .json({ message: "ההערות חייבות להיות עד 500 תווים." });
+    }
+
+    const lead = await Lead.findById(leadId).lean();
+    if (!lead) {
+      return res.status(404).json({ message: "הליד שנבחר לא נמצא." });
+    }
+
+    const messageTypeLabel = {
+      whatsapp: "הודעת WhatsApp קצרה",
+      email: "הודעת אימייל מקצועית",
+      quote: "הצעת מחיר",
+    }[messageType];
+    const toneLabel = {
+      friendly: "ידידותי וחם",
+      formal: "רשמי ומקצועי",
+      sales: "מכירתי ומשכנע, ללא לחץ",
+    }[tone];
+    const userName = req.user.name.trim();
+
+    const prompt = `
+נסח ${messageTypeLabel} עבור הליד הבא.
+שם: ${lead.name}
+שירות מבוקש: ${lead.serviceType}
+סטטוס: ${lead.status}
+הערות קיימות: ${lead.notes || "אין"}
+סגנון מבוקש: ${toneLabel}
+הנחיות נוספות: ${customNotes.trim() || "אין"}
+שם המשתמש שיש לחתום בו: ${userName}
+
+החזר רק את נוסח ההודעה המוכן לשליחה, בעברית, וסיים אותו בחתימה בשם המשתמש.
+`;
+
+    const result = await run(crmAssistantAgent, prompt);
+    if (!result.finalOutput) {
+      throw new Error("AI agent returned an empty response");
+    }
+
+    return res.status(200).json({ message: result.finalOutput });
+  } catch (error) {
+    console.error("AI Follow-up Error:", error);
+    return res.status(500).json({ message: "שגיאה ביצירת הודעת המעקב בשרת." });
+  }
+};
 
 const askAssistant = async (req, res) => {
   try {
@@ -76,4 +141,4 @@ const clearChat = async (req, res) => {
   }
 };
 
-module.exports = { askAssistant, clearChat };
+module.exports = { askAssistant, generateFollowup, clearChat };

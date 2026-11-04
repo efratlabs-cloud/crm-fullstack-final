@@ -6,7 +6,7 @@ const connectDB = require("./config/db");
 const app = express();
 
 // חיבור ל-Database
-connectDB();
+// connectDB();
 
 // Middlewares
 app.use(cors());
@@ -29,7 +29,20 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", message: "CRM Server is running!" });
 });
 
+// הפעלת השרת רק לאחר שהחיבור ל-Database הצליח
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+const startServer = async () => {
+  try {
+    await connectDB();
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("Failed to connect to DB:", error);
+  }
+};
+startServer();
+
+// app.listen(PORT, () => {
+//   console.log(`Server running on port ${PORT}`);
+// });

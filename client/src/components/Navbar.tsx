@@ -3,25 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { useState, useEffect } from "react"; // הוספנו סטייט ואפקט
+import Greeting from "./Greeting";
 
 export default function Navbar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const [greeting, setGreeting] = useState(""); // סטייט לניהול הברכה
-
-  useEffect(() => {
-    const hour = new Date().getHours();
-    const currentGreeting =
-      hour < 12 ? "בוקר טוב" : hour < 17 ? "צהריים טובים" : "ערב טוב";
-    setGreeting(currentGreeting);
-  }, []);
 
   const navLinks = [
     { name: "דאשבורד", href: "/dashboard" },
     { name: "ניהול לידים", href: "/leads" },
     { name: "פרויקטים", href: "/projects" },
-    { name: "עוזר חכם (AI)", href: "/ai-assistant" },
+    { name: "עוזר חכם (AI)", href: "/aiassistant" },
   ];
 
   const isAuthPage = pathname === "/login" || pathname === "/register";
@@ -79,7 +71,8 @@ export default function Navbar() {
           <div className="flex items-center space-x-4 space-x-reverse">
             {user && (
               <span className="text-sm font-medium text-gray-700">
-                {greeting} {user.name}
+                <Greeting />
+                {user.name}
                 {user.role === "admin" && (
                   <span className="mr-2 rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">
                     Admin
