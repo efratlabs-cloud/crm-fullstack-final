@@ -19,7 +19,27 @@ const leadSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
-      maxlength: 20,
+      maxlength: 11,
+      set: (value) => {
+        if (typeof value !== "string") return value;
+
+        const phone = value.trim();
+        if (
+          !/^(?:0[2-4]|0[89]|05\d|07[2-9])-?\d{7}$/.test(phone)
+        ) {
+          return phone;
+        }
+
+        const digits = phone.replace("-", "");
+        const prefixLength =
+          digits.startsWith("05") || digits.startsWith("07") ? 3 : 2;
+        return `${digits.slice(0, prefixLength)}-${digits.slice(prefixLength)}`;
+      },
+      validate: {
+        validator: /^(?:0[2-4]|0[89]|05\d|07[2-9])-\d{7}$/,
+        message:
+          "מספר הטלפון אינו תקין. יש להזין מספר ישראלי, לדוגמה: 0501234567 או 050-1234567.",
+      },
     },
     serviceType: {
       type: String,
