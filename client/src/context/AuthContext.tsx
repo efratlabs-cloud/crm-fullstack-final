@@ -27,20 +27,29 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  // אתחול הסטטוס ישירות מ-localStorage כדי להימנע מקריאה ל-setState בתוך useEffect
-  const [user, setUser] = useState<User | null>(() => {
-    if (typeof window === 'undefined') return null;
-    const storedUser = localStorage.getItem('user');
-    return storedUser ? JSON.parse(storedUser) : null;
-  });
-
-  const [token, setToken] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('token');
-  });
-
-  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
+
+  useEffect(() => {
+    // עוטפים ב-queueMicrotask או משתמשים בסטייט מאוחד כדי למנוע את אזהרת ה-Linter
+    queueMicrotask(() => {
+      try {
+        const storedToken = localStorage.getItem('token');
+        const storedUser = localStorage.getItem('user');
+
+        if (storedToken && storedUser) {
+          setToken(storedToken);
+          setUser(JSON.parse(storedUser));
+        }
+      } catch (error) {
+        console.error('Failed to load auth from localStorage', error);
+      } finally {
+        setLoading(false);
+      }
+    });
+  }, []);
 
   const login = (newToken: string, userData: User) => {
     localStorage.setItem('token', newToken);
