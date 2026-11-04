@@ -13,7 +13,7 @@ const { protect } = require("../middlewares/authMiddleware");
 router.post("/login", loginUser);
 
 // @route POST /api/auth/google-login
-router.post("/google-login", googleLogin);
+router.post("/google", googleLogin);
 
 // @route GET /api/auth/me
 router.get("/me", protect, getMe);
