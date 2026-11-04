@@ -42,6 +42,7 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 };
 
 module.exports = mongoose.model("User", userSchema);
+<<<<<<< HEAD
 
 // const mongoose = require("mongoose");
 // const bcrypt = require("bcryptjs");
@@ -97,3 +98,5 @@ module.exports = mongoose.model("User", userSchema);
 // };
 
 // module.exports = mongoose.model("User", userSchema);
+=======
+>>>>>>> 75dd15bb328ef0de64616833e40fd18f67d2d0c6

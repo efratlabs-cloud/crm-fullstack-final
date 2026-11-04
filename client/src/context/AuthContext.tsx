@@ -27,20 +27,21 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  // אתחול הסטטוס ישירות מ-localStorage כדי להימנע מקריאה ל-setState בתוך useEffect
-  const [user, setUser] = useState<User | null>(() => {
-    if (typeof window === 'undefined') return null;
-    const storedUser = localStorage.getItem('user');
-    return storedUser ? JSON.parse(storedUser) : null;
-  });
-
-  const [token, setToken] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('token');
-  });
-
-  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      const storedUser = localStorage.getItem('user');
+      setUser(storedUser ? JSON.parse(storedUser) : null);
+      setToken(localStorage.getItem('token'));
+      setLoading(false);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, []);
 
   const login = (newToken: string, userData: User) => {
     localStorage.setItem('token', newToken);

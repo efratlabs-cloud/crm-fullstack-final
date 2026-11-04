@@ -1,6 +1,9 @@
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const { OAuth2Client } = require("google-auth-library");
+
+const googleClient = new OAuth2Client();
 
 const isAdminEmail = (email) => {
   const adminEmails = process.env.ADMIN_EMAILS
@@ -98,33 +101,69 @@ const loginUser = async (req, res) => {
   }
 };
 
-// @desc התחברות/הרשמה מהירה עם גוגל
-// @route POST /api/auth/google
+// @desc Verify a Google ID token and sign in or register the Google user
+// @route POST /api/auth/google-login
 const googleLogin = async (req, res) => {
   try {
-    const { email, googleId } = req.body;
+    const { credential } = req.body || {};
+    const clientId = process.env.GOOGLE_CLIENT_ID;
 
-    if (!email || !googleId) {
-      return res.status(400).json({ message: "אנא מלא את כל השדות" });
+    if (!clientId) {
+      return res
+        .status(503)
+        .json({ message: "התחברות Google לא הוגדרה בשרת." });
     }
 
+    if (typeof credential !== "string" || !credential) {
+      return res.status(400).json({ message: "חסר אישור התחברות מ-Google." });
+    }
+
+    let googleUser;
+    try {
+      const ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: clientId,
+      });
+      googleUser = ticket.getPayload();
+    } catch (error) {
+      console.error("Google token verification failed:", error);
+      return res.status(401).json({ message: "אימות Google נכשל." });
+    }
+
+    if (
+      !googleUser?.sub ||
+      !googleUser.email ||
+      googleUser.email_verified !== true
+    ) {
+      return res
+        .status(401)
+        .json({ message: "לא ניתן לאמת את חשבון Google." });
+    }
+
+    const email = googleUser.email.toLowerCase();
     const shouldBeAdmin = isAdminEmail(email);
 
-    let user = await User.findOne({ email });
+    let user = await User.findOne({ googleId: googleUser.sub });
     if (!user) {
-      const salt = await bcrypt.genSalt(10);
-      const passwordHash = await bcrypt.hash(googleId, salt);
+      user = await User.findOne({ email });
+      if (user?.googleId && user.googleId !== googleUser.sub) {
+        return res.status(409).json({
+          message: "כתובת האימייל משויכת לחשבון Google אחר.",
+        });
+      }
+    }
 
+    if (!user) {
       user = await User.create({
-        name: email.split("@")[0],
+        name: googleUser.name || email.split("@")[0],
         email,
-        passwordHash,
+        googleId: googleUser.sub,
         role: shouldBeAdmin ? "admin" : "user",
       });
     } else {
       let updated = false;
       if (!user.googleId) {
-        user.googleId = googleId;
+        user.googleId = googleUser.sub;
         updated = true;
       }
       if (shouldBeAdmin && user.role !== "admin") {
@@ -144,9 +183,8 @@ const googleLogin = async (req, res) => {
       token: generateToken(user._id, user.role),
     });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ message: "שגיאה בשרת", error: error.message });
+    console.error("Google Login Error:", error);
+    return res.status(500).json({ message: "שגיאת שרת בהתחברות עם Google." });
   }
 };
 
