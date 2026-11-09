@@ -33,22 +33,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
-    // עוטפים ב-queueMicrotask או משתמשים בסטייט מאוחד כדי למנוע את אזהרת ה-Linter
-    queueMicrotask(() => {
-      try {
-        const storedToken = localStorage.getItem('token');
-        const storedUser = localStorage.getItem('user');
+    const timeoutId = window.setTimeout(() => {
+      const storedUser = localStorage.getItem('user');
+      setUser(storedUser ? JSON.parse(storedUser) : null);
+      setToken(localStorage.getItem('token'));
+      setLoading(false);
+    }, 0);
 
-        if (storedToken && storedUser) {
-          setToken(storedToken);
-          setUser(JSON.parse(storedUser));
-        }
-      } catch (error) {
-        console.error('Failed to load auth from localStorage', error);
-      } finally {
-        setLoading(false);
-      }
-    });
+    return () => window.clearTimeout(timeoutId);
   }, []);
 
   const login = (newToken: string, userData: User) => {

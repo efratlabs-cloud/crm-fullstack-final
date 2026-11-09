@@ -75,6 +75,7 @@ const updateLead = async (req, res) => {
     const updateData = req.body;
     const updatedLead = await Lead.findByIdAndUpdate(leadId, updateData, {
       new: true,
+      runValidators: true,
     }).populate("assignedTo", "name email phone");
 
     if (!updatedLead) {
