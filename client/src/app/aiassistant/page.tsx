@@ -1,17 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-
-interface Lead {
-  _id: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  status?: string;
-  serviceType?: string;
-  service?: string;
-  notes?: string;
-}
+import AiResultCard, { Lead } from "@/components/AiResultCard";
+import AssistantForm from "@/components/AssistantForm";
 
 export default function AiAssistantPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -28,6 +19,7 @@ export default function AiAssistantPage() {
   const [generating, setGenerating] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [copied, setCopied] = useState<boolean>(false);
+  const [savedStatus, setSavedStatus] = useState<boolean>(false);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
   const selectedLead = leads.find((l) => l._id === selectedLeadId);
@@ -57,6 +49,45 @@ export default function AiAssistantPage() {
 
     fetchLeads();
   }, [API_URL]);
+
+  // שמירת הטיוטה והמחיר המעודכן ב-DB של הליד
+  const saveDraftToLeadDB = async (textToSave: string) => {
+    if (!selectedLeadId || !textToSave) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_URL}/api/ai/followup`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          leadId: selectedLeadId,
+          draft: textToSave,
+        }),
+      });
+
+      if (res.ok) {
+        const updated = await res.json();
+        setLeads((prev) =>
+          prev.map((l) =>
+            l._id === selectedLeadId
+              ? {
+                  ...l,
+                  aiFollowUpDraft: updated.aiFollowUpDraft,
+                  aiPriceQuote: updated.aiPriceQuote,
+                }
+              : l
+          )
+        );
+        setSavedStatus(true);
+        setTimeout(() => setSavedStatus(false), 2500);
+      }
+    } catch (err) {
+      console.error("שגיאה בעדכון הליד ב-DB:", err);
+    }
+  };
 
   // שליחת בקשה לסוכן ה-AI בשרת
   const handleGenerate = async (e: React.FormEvent) => {
@@ -89,7 +120,7 @@ export default function AiAssistantPage() {
       const contentType = res.headers.get("content-type") || "";
       if (!contentType.includes("application/json")) {
         throw new Error(
-          `השרת החזיר תשובה לא תקינה (HTTP ${res.status}). בדקו שכתובת ה-API נכונה ושהשרת מעודכן.`,
+          `השרת החזיר תשובה לא תקינה (HTTP ${res.status}). בדקו שכתובת ה-API נכונה ושהשרת מעודכן.`
         );
       }
 
@@ -98,7 +129,21 @@ export default function AiAssistantPage() {
         throw new Error(data.message || "שגיאה ביצירת ההודעה");
       }
 
-      setGeneratedMessage(data.message);
+      const cleanMessage = (data.message || "").replace(/\*\*/g, "");
+      setGeneratedMessage(cleanMessage);
+
+      // עדכון ה-State המקומי של הליד עם הטיוטה והמחיר שחזרו מהשרת
+      setLeads((prev) =>
+        prev.map((l) =>
+          l._id === selectedLeadId
+            ? {
+                ...l,
+                aiFollowUpDraft: data.aiFollowUpDraft ?? cleanMessage,
+                aiPriceQuote: data.aiPriceQuote ?? l.aiPriceQuote,
+              }
+            : l
+        )
+      );
     } catch (err: unknown) {
       const msg =
         err instanceof Error ? err.message : "שגיאה בחיבור לעוזר החכם";
@@ -111,12 +156,14 @@ export default function AiAssistantPage() {
   const handleCopy = () => {
     if (!generatedMessage) return;
     navigator.clipboard.writeText(generatedMessage);
+    saveDraftToLeadDB(generatedMessage);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
 
   const handlePrintQuote = () => {
     if (!generatedMessage || !selectedLead) return;
+    saveDraftToLeadDB(generatedMessage);
     setQuoteDate(new Date().toLocaleDateString("he-IL"));
     window.setTimeout(() => window.print(), 0);
   };
@@ -124,14 +171,13 @@ export default function AiAssistantPage() {
   return (
     <>
       <div className="screen-content space-y-6" dir="rtl">
-        {/* כותרת העמוד */}
         <div className="border-b border-gray-200 pb-4">
           <h1 className="text-2xl font-bold text-gray-900">
             עוזר חכם (AI) – מחולל הודעות פולואפ והצעות מחיר
           </h1>
           <p className="mt-1 text-sm text-gray-600">
             בחרו ליד ממסד הנתונים והעוזר החכם ינסח עבורכם הודעה מותאמת אישית
-            לוואטסאפ או לאימייל.
+            בהתבסס על שיחות והצעות קודמות.
           </p>
         </div>
 
@@ -149,7 +195,6 @@ export default function AiAssistantPage() {
             </h2>
 
             <form onSubmit={handleGenerate} className="space-y-5">
-              {/* בחירת ליד */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   בחירת ליד מתוך המערכת
@@ -181,11 +226,10 @@ export default function AiAssistantPage() {
                 )}
               </div>
 
-              {/* הצגת תקציר נתוני הליד שנבחר */}
               {selectedLead && (
                 <div className="rounded-xl bg-indigo-50/60 border border-indigo-100 p-3.5 text-xs text-gray-700 space-y-1">
                   <div className="font-semibold text-indigo-900">
-                    פרטי הליד שנשלפים ל-Prompt:
+                    פרטי הליד והזיכרון שנשלפים ל-Prompt:
                   </div>
                   <div>
                     <span className="font-medium">שם:</span> {selectedLead.name}
@@ -208,10 +252,15 @@ export default function AiAssistantPage() {
                       {selectedLead.notes}
                     </div>
                   )}
+                  {selectedLead.aiPriceQuote ? (
+                    <div className="text-indigo-800 font-semibold">
+                      הצעת מחיר אחרונה ב-DB:{" "}
+                      {selectedLead.aiPriceQuote.toLocaleString("he-IL")} ש&quot;ח
+                    </div>
+                  ) : null}
                 </div>
               )}
 
-              {/* בחירת סוג הודעה */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   סוג ההודעה
@@ -227,7 +276,7 @@ export default function AiAssistantPage() {
                       type="button"
                       onClick={() => {
                         setMessageType(
-                          item.id as "whatsapp" | "email" | "quote",
+                          item.id as "whatsapp" | "email" | "quote"
                         );
                         setGeneratedMessage("");
                       }}
@@ -243,7 +292,6 @@ export default function AiAssistantPage() {
                 </div>
               </div>
 
-              {/* בחירת טון דיבור */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   סגנון וטון דיבור
@@ -261,7 +309,6 @@ export default function AiAssistantPage() {
                 </select>
               </div>
 
-              {/* דגשים נוספים */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   דגשים ספציפיים להודעה (אופציונלי)
@@ -287,76 +334,26 @@ export default function AiAssistantPage() {
             </form>
           </div>
 
-          {/* צד שמאל: תוצאת ה-AI, עריכה והעתקה */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-800">
-                  2. תוצאת הסוכן (ניתנת לעריכה)
-                </h2>
-                {generatedMessage && (
-                  <div className="flex items-center gap-2">
-                    {messageType === "quote" && (
-                      <button
-                        type="button"
-                        onClick={handlePrintQuote}
-                        className="inline-flex items-center rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-700"
-                      >
-                        הדפסה / שמירה כ־PDF
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={handleCopy}
-                      className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition"
-                    >
-                      {copied ? "✓ הועתק ללוח!" : "העתק טקסט"}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {generating ? (
-                <div className="h-64 flex flex-col items-center justify-center text-gray-500 space-y-3">
-                  <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                  <p className="text-sm">
-                    מעבד את נתוני הליד ומייצר נוסח מותאם...
-                  </p>
-                </div>
-              ) : generatedMessage ? (
-                <textarea
-                  rows={12}
-                  value={generatedMessage}
-                  onChange={(e) => setGeneratedMessage(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-800 leading-relaxed focus:bg-white focus:border-indigo-500 focus:outline-none"
-                />
-              ) : (
-                <div className="h-64 flex items-center justify-center rounded-xl border-2 border-dashed border-gray-200 text-center p-6">
-                  <p className="text-sm text-gray-400">
-                    בחרו ליד ולחצו על &quot;צור הודעה חכמה עם AI&quot; כדי לראות
-                    כאן את הטקסט המנוסח.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {generatedMessage &&
-              selectedLead?.phone &&
-              messageType === "whatsapp" && (
-                <div className="mt-4 pt-4 border-t border-gray-100">
-                  <a
-                    href={`https://wa.me/${selectedLead.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(generatedMessage)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition"
-                  >
-                    שלח ישירות לוואטסאפ של {selectedLead.name}
-                  </a>
-                </div>
-              )}
-          </div>
+          {/* צד שמאל: קומפוננטת התוצאה והעריכה */}
+          <AiResultCard
+            generatedMessage={generatedMessage}
+            setGeneratedMessage={setGeneratedMessage}
+            generating={generating}
+            messageType={messageType}
+            selectedLead={selectedLead}
+            copied={copied}
+            savedStatus={savedStatus}
+            onCopy={handleCopy}
+            onPrintQuote={handlePrintQuote}
+            onSaveDraft={saveDraftToLeadDB}
+          />
         </div>
+
+        {/* חלק 3: צ'אט חכם מתמשך עם זיכרון */}
+        <AssistantForm />
       </div>
+
+      {/* תצוגת הדפסה להצעת מחיר */}
       {messageType === "quote" && generatedMessage && selectedLead && (
         <article className="quote-document" dir="rtl">
           <header className="quote-header">
@@ -375,7 +372,7 @@ export default function AiAssistantPage() {
           </section>
 
           {selectedLead.serviceType && (
-            <section className="quote-service">
+            <section className="quote-service">               
               <h2>השירות המבוקש</h2>
               <p>{selectedLead.serviceType}</p>
             </section>
