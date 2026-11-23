@@ -12,6 +12,7 @@ export default function Navbar() {
   const navLinks = [
     { name: "דאשבורד", href: "/dashboard" },
     { name: "ניהול לידים", href: "/leads" },
+    { name: "לקוחות קיימים", href: "/customers" },
     { name: "פרויקטים", href: "/projects" },
     { name: "עוזר חכם (AI)", href: "/aiassistant" },
   ];

@@ -34,6 +34,9 @@ const LEAD_STATUSES = [
   "לקוח משלם",
   "לא רלוונטי",
 ];
+const LEAD_FILTER_STATUSES = LEAD_STATUSES.filter(
+  (status) => status !== "לקוח משלם",
+);
 
 const EMPTY_FORM: LeadFormValues = {
   name: "",
@@ -335,9 +338,14 @@ export default function LeadsPage() {
     });
   }, [showForm, editingLead]);
 
+  const leadOnlyList = useMemo(
+    () => leads.filter((lead) => lead.status !== "לקוח משלם"),
+    [leads],
+  );
+
   const filteredLeads = useMemo(() => {
     const query = search.trim().toLocaleLowerCase("he");
-    return leads.filter((lead) => {
+    return leadOnlyList.filter((lead) => {
       const matchesStatus =
         statusFilter === "הכל" || lead.status === statusFilter;
       const searchableText = [
@@ -350,7 +358,7 @@ export default function LeadsPage() {
         .toLocaleLowerCase("he");
       return matchesStatus && (!query || searchableText.includes(query));
     });
-  }, [leads, search, statusFilter]);
+  }, [leadOnlyList, search, statusFilter]);
 
   const closeForm = () => {
     setShowForm(false);
@@ -411,12 +419,9 @@ export default function LeadsPage() {
     }
   };
 
-  const newLeadCount = leads.filter((lead) => lead.status === "חדש").length;
-  const activeCount = leads.filter(
+  const newLeadCount = leadOnlyList.filter((lead) => lead.status === "חדש").length;
+  const activeCount = leadOnlyList.filter(
     (lead) => lead.status === "בטיפול" || lead.status === "יצרו איתו קשר",
-  ).length;
-  const convertedCount = leads.filter(
-    (lead) => lead.status === "לקוח משלם",
   ).length;
 
   if (loading) {
@@ -484,12 +489,12 @@ export default function LeadsPage() {
 
       <section
         aria-label="סיכום לידים"
-        className="grid grid-cols-1 gap-4 sm:grid-cols-3"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2"
       >
         {[
           {
             label: "סך כל הלידים",
-            value: leads.length,
+            value: leadOnlyList.length,
             icon: "👥",
             iconClass: "bg-blue-50 text-blue-600",
           },
@@ -498,12 +503,6 @@ export default function LeadsPage() {
             value: newLeadCount + activeCount,
             icon: "◷",
             iconClass: "bg-amber-50 text-amber-600",
-          },
-          {
-            label: "הפכו ללקוחות",
-            value: convertedCount,
-            icon: "✓",
-            iconClass: "bg-emerald-50 text-emerald-600",
           },
         ].map((stat) => (
           <div
@@ -531,7 +530,7 @@ export default function LeadsPage() {
           <div>
             <h2 className="text-lg font-bold text-slate-900">רשימת הלידים</h2>
             <p className="mt-1 text-sm text-slate-500">
-              מוצגים {filteredLeads.length} מתוך {leads.length} לידים
+              מוצגים {filteredLeads.length} מתוך {leadOnlyList.length} לידים
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -556,7 +555,7 @@ export default function LeadsPage() {
               className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
             >
               <option value="הכל">כל הסטטוסים</option>
-              {LEAD_STATUSES.map((status) => (
+              {LEAD_FILTER_STATUSES.map((status) => (
                 <option key={status} value={status}>
                   {status}
                 </option>
@@ -571,14 +570,14 @@ export default function LeadsPage() {
               👥
             </div>
             <h3 className="mt-4 font-semibold text-slate-900">
-              {leads.length === 0 ? "עדיין אין לידים" : "לא נמצאו לידים"}
+              {leadOnlyList.length === 0 ? "עדיין אין לידים" : "לא נמצאו לידים"}
             </h3>
             <p className="mt-1 text-sm text-slate-500">
-              {leads.length === 0
+              {leadOnlyList.length === 0
                 ? "הוסיפו ליד חדש כדי להתחיל לנהל פניות ולקוחות."
                 : "נסו לשנות את מילות החיפוש או את הסינון לפי סטטוס."}
             </p>
-            {leads.length === 0 && (
+            {leadOnlyList.length === 0 && (
               <button
                 type="button"
                 onClick={() => setShowForm(true)}

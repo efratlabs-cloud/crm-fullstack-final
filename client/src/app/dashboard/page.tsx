@@ -14,12 +14,20 @@ interface Project {
 interface Lead {
   _id: string;
   name: string;
+  email: string;
+  phone: string;
+  serviceType: string;
+  status: string;
+  aiPriceQuote?: number;
 }
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -29,20 +37,24 @@ export default function DashboardPage() {
 
         // שליפת פרויקטים ולידים במקביל לצורך חישוב סטטיסטיקות
         const [projectsRes, leadsRes] = await Promise.all([
-          fetch("http://localhost:5000/api/projects", { headers }),
-          fetch("http://localhost:5000/api/leads", { headers }),
+          fetch(`${API_URL}/api/projects`, { headers }),
+          fetch(`${API_URL}/api/leads`, { headers }),
         ]);
 
-        if (projectsRes.ok) {
-          const projectsData = await projectsRes.json();
-          setProjects(projectsData);
+        const projectsData = await projectsRes.json();
+        const leadsData = await leadsRes.json();
+
+        if (!projectsRes.ok) {
+          throw new Error(projectsData.message || "שגיאה בטעינת הפרויקטים");
+        }
+        if (!leadsRes.ok) {
+          throw new Error(leadsData.message || "שגיאה בטעינת הלידים");
         }
 
-        if (leadsRes.ok) {
-          const leadsData = await leadsRes.json();
-          setLeads(leadsData);
-        }
+        setProjects(Array.isArray(projectsData) ? projectsData : []);
+        setLeads(Array.isArray(leadsData) ? leadsData : []);
       } catch (err) {
+        setError(err instanceof Error ? err.message : "שגיאה בטעינת הדאשבורד");
         console.error("Error fetching dashboard data:", err);
       } finally {
         setLoading(false);
@@ -57,7 +69,13 @@ export default function DashboardPage() {
     (p) => p.status === "בביצוע" || !p.status,
   ).length;
   const totalBudget = projects.reduce((sum, p) => sum + (p.budget || 0), 0);
-  const totalLeads = leads.length;
+  const customers = leads.filter((lead) => lead.status === "לקוח משלם");
+  const activeLeads = leads.filter((lead) => lead.status !== "לקוח משלם");
+  const totalLeads = activeLeads.length;
+  const customerRevenue = customers.reduce(
+    (sum, customer) => sum + (customer.aiPriceQuote || 0),
+    0,
+  );
 
   if (loading)
     return (
@@ -67,17 +85,26 @@ export default function DashboardPage() {
     );
 
   return (
-    <div className="py-6 space-y-8">
+    <div className="py-6 space-y-8" dir="rtl">
       {/* כותרת ראשית */}
       <div>
         <h1 className="text-3xl font-extrabold text-gray-900">דאשבורד ראשי</h1>
         <p className="mt-2 text-sm text-gray-600">
-          ברוכים הבאים למערכת ה-CRM של Studio CAN. הנה סיכום המצב העסקי כרגע.
+          ברוכים הבאים למערכת ה-CRM של Studio CRM. הנה סיכום המצב העסקי כרגע.
         </p>
       </div>
 
+      {error && (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+        >
+          {error}
+        </div>
+      )}
+
       {/* כרטיסיות סטטיסטיקה (KPIs) */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
         <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-gray-500">פרויקטים פעילים</p>
@@ -107,7 +134,7 @@ export default function DashboardPage() {
         <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-gray-500">
-              סה״כ לידים במערכת
+              לידים פעילים
             </p>
             <p className="mt-2 text-3xl font-bold text-gray-900">
               {totalLeads}
@@ -117,10 +144,28 @@ export default function DashboardPage() {
             👥
           </div>
         </div>
+
+        <Link
+          href="/customers"
+          className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between hover:border-emerald-300 transition"
+        >
+          <div>
+            <p className="text-sm font-medium text-gray-500">לקוחות משלמים</p>
+            <p className="mt-2 text-3xl font-bold text-gray-900">
+              {customers.length}
+            </p>
+            <p className="mt-1 text-xs text-emerald-600">
+              ₪{customerRevenue.toLocaleString("he-IL")} בהצעות מחיר
+            </p>
+          </div>
+          <div className="h-12 w-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl font-bold">
+            ✓
+          </div>
+        </Link>
       </div>
 
       {/* קישורים מהירים לפעולות */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
         <Link
           href="/projects"
           className="bg-indigo-600 text-white p-6 rounded-2xl shadow-sm hover:bg-indigo-700 transition flex flex-col justify-between"
@@ -165,6 +210,70 @@ export default function DashboardPage() {
             מעבר ל-AI &larr;
           </span>
         </Link>
+
+        <Link
+          href="/customers"
+          className="bg-emerald-600 text-white p-6 rounded-2xl shadow-sm hover:bg-emerald-700 transition flex flex-col justify-between"
+        >
+          <div>
+            <h2 className="text-lg font-bold">לקוחות קיימים</h2>
+            <p className="mt-1 text-sm text-emerald-100">
+              צפייה בלקוחות משלם ובפרטי הקשר והעסקה שלהם.
+            </p>
+          </div>
+          <span className="mt-4 inline-block text-xs font-semibold uppercase tracking-wider bg-emerald-500/50 px-3 py-1 rounded-lg w-fit">
+            מעבר ללקוחות &larr;
+          </span>
+        </Link>
+      </div>
+
+      {/* לקוחות אחרונים להצגה מהירה */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <h2 className="text-xl font-bold text-gray-900">לקוחות אחרונים</h2>
+          <Link
+            href="/customers"
+            className="text-sm font-semibold text-indigo-600 hover:text-indigo-800"
+          >
+            לכל הלקוחות &larr;
+          </Link>
+        </div>
+        {customers.length === 0 ? (
+          <p className="text-gray-500 text-sm">
+            עדיין אין לידים בסטטוס לקוח משלם.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {customers.slice(0, 6).map((customer) => (
+              <div
+                key={customer._id}
+                className="rounded-xl border border-gray-200 p-4"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-sm font-bold text-emerald-700">
+                    {customer.name.trim().charAt(0)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-gray-900">
+                      {customer.name}
+                    </p>
+                    <p className="truncate text-xs text-gray-500">
+                      {customer.serviceType}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-2 border-t border-gray-100 pt-3">
+                  <span className="truncate text-xs text-gray-500">
+                    {customer.phone}
+                  </span>
+                  <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
+                    לקוח משלם
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* פרויקטים אחרונים להצגה מהירה */}
